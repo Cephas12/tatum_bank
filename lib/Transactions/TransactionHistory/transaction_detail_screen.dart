@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../providers/account_provider.dart';
 
 class TransactionDetailScreen extends StatelessWidget {
-  const TransactionDetailScreen({super.key});
+  final Transaction transaction;
+
+  const TransactionDetailScreen({super.key, required this.transaction});
 
   @override
   Widget build(BuildContext context) {
@@ -80,31 +83,28 @@ class TransactionDetailScreen extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        // MTN Logo Circle
+                        // Icon Circle
                         Container(
                           width: 54,
                           height: 54,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFC727),
+                          decoration: BoxDecoration(
+                            color: transaction.bgColor,
                             shape: BoxShape.circle,
                           ),
-                          child: const Center(
-                            child: Text(
-                              'MTN',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                              ),
+                          child: Center(
+                            child: Icon(
+                              transaction.icon,
+                              color: transaction.iconColor,
+                              size: 24,
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
 
-                        const Text(
-                          'DATA\nPURCHASE',
+                        Text(
+                          transaction.type.toUpperCase(),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.2,
@@ -114,9 +114,9 @@ class TransactionDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
 
-                        const Text(
-                          'MTN Data Purchase',
-                          style: TextStyle(
+                        Text(
+                          transaction.title,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF0B192C),
@@ -124,9 +124,9 @@ class TransactionDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
 
-                        const Text(
-                          '– ₦1,000.00',
-                          style: TextStyle(
+                        Text(
+                          transaction.amount,
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: Color(0xFF0B192C),
@@ -141,20 +141,26 @@ class TransactionDetailScreen extends StatelessWidget {
                             Container(
                               width: 14,
                               height: 14,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF10B981),
+                              decoration: BoxDecoration(
+                                color: transaction.status == TransactionStatus.successful
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFFEF4444),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                Icons.check,
+                              child: Icon(
+                                transaction.status == TransactionStatus.successful
+                                    ? Icons.check
+                                    : Icons.close,
                                 color: Colors.white,
                                 size: 10,
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Text(
-                              'Successful',
-                              style: TextStyle(
+                            Text(
+                              transaction.status == TransactionStatus.successful
+                                  ? 'Successful'
+                                  : 'Failed',
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF64748B),
@@ -164,9 +170,9 @@ class TransactionDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
 
-                        const Text(
-                          'Oct 24, 2023 • 10:24 AM',
-                          style: TextStyle(
+                        Text(
+                          transaction.subtitle,
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF94A3B8),
                           ),
@@ -204,32 +210,32 @@ class TransactionDetailScreen extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        _buildInfoRow('Transaction Type', 'Data Purchase'),
+                        _buildInfoRow('Transaction Type', transaction.type),
                         _buildDivider(),
-                        _buildInfoRow('Amount', '₦1,000.00'),
+                        _buildInfoRow('Amount', transaction.amount.replaceAll('+ ', '').replaceAll('- ', '')),
                         _buildDivider(),
                         _buildInfoRow(
                           'Account Debited',
-                          'Savings • 012****345',
+                          'Savings • 709****766',
                         ),
                         _buildDivider(),
-                        _buildInfoRow('Narration', 'MTN 1.5GB Monthly Plan'),
+                        _buildInfoRow('Narration', transaction.narration),
                         _buildDivider(),
                         _buildInfoRow(
                           'Reference Number',
-                          'TRN8293041',
+                          transaction.reference,
                           hasCopy: true,
                         ),
                         _buildDivider(),
                         _buildInfoRow(
                           'Transaction ID',
-                          'TAT-90821-XP2',
+                          'TAT-${transaction.reference.split('-').last}',
                           hasCopy: true,
                         ),
-                        _buildDivider(),
-                        _buildInfoRow('Channel', 'MTN Nigeria'),
-                        _buildDivider(),
-                        _buildInfoRow('Phone Number', '0803 123 4567'),
+                        if (transaction.recipient != null) ...[
+                          _buildDivider(),
+                          _buildInfoRow('Recipient', transaction.recipient!),
+                        ],
                       ],
                     ),
                   ),

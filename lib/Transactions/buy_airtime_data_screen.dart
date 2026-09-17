@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../app/constants.dart';
+import 'package:provider/provider.dart';
+import '../providers/account_provider.dart';
 import 'transaction_status_screen.dart';
 
 class BuyAirtimeDataScreen extends StatefulWidget {
@@ -619,9 +620,39 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                               }
                               final double requestedAmount =
                                   double.tryParse(data['amount']!) ?? 0;
+                              final account = context.read<AccountProvider>();
                               final bool hasSufficientBalance =
-                                  requestedAmount <=
-                                  AccountConstants.availableBalance;
+                                  requestedAmount <= account.balance;
+
+                              // Add transaction regardless of success
+                              account.addTransaction(
+                                Transaction(
+                                  title: 'Buy ${data['service']} – ${data['network']}',
+                                  subtitle: 'Just now • ${hasSufficientBalance ? 'Success' : 'Failed'}',
+                                  amount: '- ₦${data['amount']}',
+                                  isCredit: false,
+                                  icon: data['service'] == 'Airtime'
+                                      ? Icons.smartphone_rounded
+                                      : Icons.wifi_tethering_rounded,
+                                  bgColor: hasSufficientBalance
+                                      ? const Color(0xFFECFDF5)
+                                      : const Color(0xFFFEE2E2),
+                                  iconColor: hasSufficientBalance
+                                      ? const Color(0xFF059669)
+                                      : const Color(0xFFEF4444),
+                                  type: '${data['service']} Purchase',
+                                  narration: hasSufficientBalance
+                                      ? '${data['network']} ${data['service']} for ${data['phone']}'
+                                      : 'Insufficient Balance',
+                                  reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
+                                  recipient: data['phone'],
+                                  status: hasSufficientBalance
+                                      ? TransactionStatus.successful
+                                      : TransactionStatus.failed,
+                                ),
+                                requestedAmount,
+                              );
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -632,14 +663,16 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                                     plan: data['service']!,
                                     recipient: data['phone']!,
                                     onPrimaryAction: () => hasSufficientBalance
-                                        ? Navigator.popUntil(
+                                        ? Navigator.pushNamedAndRemoveUntil(
                                             context,
-                                            (route) => route.isFirst,
+                                            '/home',
+                                            (route) => false,
                                           )
                                         : Navigator.pop(context),
-                                    onSecondaryAction: () => Navigator.popUntil(
+                                    onSecondaryAction: () => Navigator.pushNamedAndRemoveUntil(
                                       context,
-                                      (route) => route.isFirst,
+                                      '/home',
+                                      (route) => false,
                                     ),
                                   ),
                                 ),

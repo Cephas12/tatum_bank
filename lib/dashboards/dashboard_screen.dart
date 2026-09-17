@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/account_provider.dart';
 import 'account_information_screen.dart';
 import '../Transactions/TransactionHistory/transaction_history_screen.dart';
 import '../Transactions/TransactionHistory/transaction_detail_screen.dart';
@@ -22,6 +23,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final account = context.watch<AccountProvider>();
     final user = auth.user;
 
     return Scaffold(
@@ -247,7 +249,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(
                       children: [
                         Text(
-                          _isBalanceVisible ? '₦165,700.00' : '₦ ••••••••',
+                          _isBalanceVisible 
+                              ? '₦${account.balance.toStringAsFixed(2).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}' 
+                              : '₦ ••••••••',
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
@@ -516,52 +520,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Column(
-                  children: [
-                    _TransactionTile(
-                      icon: Icons.arrow_downward_rounded,
-                      iconBgColor: Color(0xFFE6F4EA),
-                      iconColor: Color(0xFF10B981),
-                      title: 'Salary Credit',
-                      subtitle: '28 May 2024 • 08:35 AM',
-                      amount: '+ ₦120,000.00',
-                      amountColor: Color(0xFF0B192C),
-                      onTap: () => _openTransactionDetail(context),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    _TransactionTile(
-                      icon: Icons.arrow_upward_rounded,
-                      iconBgColor: Color(0xFFF3E8FF),
-                      iconColor: Color(0xFF9333EA),
-                      title: 'Transfer to John Doe',
-                      subtitle: '27 May 2024 • 04:21 PM',
-                      amount: '- ₦25,000.00',
-                      amountColor: Color(0xFF0B192C),
-                      onTap: () => _openTransactionDetail(context),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    _TransactionTile(
-                      icon: Icons.lightbulb_outline_rounded,
-                      iconBgColor: Color(0xFFFFF7ED),
-                      iconColor: Color(0xFFEA580C),
-                      title: 'Phcn Electricity Bill',
-                      subtitle: '27 May 2024 • 11:10 AM',
-                      amount: '- ₦6,500.00',
-                      amountColor: Color(0xFF0B192C),
-                      onTap: () => _openTransactionDetail(context),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    _TransactionTile(
-                      icon: Icons.lightbulb_outline_rounded,
-                      iconBgColor: Color(0xFFFFF7ED),
-                      iconColor: Color(0xFFEA580C),
-                      title: 'Phcn Electricity Bill',
-                      subtitle: '27 May 2024 • 11:10 AM',
-                      amount: '- ₦2,500.00',
-                      amountColor: Color(0xFF0B192C),
-                      onTap: () => _openTransactionDetail(context),
-                    ),
-                  ],
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: account.transactions.length > 4 ? 4 : account.transactions.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (context, index) {
+                    final tx = account.transactions[index];
+                    return _TransactionTile(
+                      icon: tx.icon,
+                      iconBgColor: tx.bgColor,
+                      iconColor: tx.iconColor,
+                      title: tx.title,
+                      subtitle: tx.subtitle,
+                      amount: tx.amount,
+                      amountColor: tx.status == TransactionStatus.failed ? const Color(0xFFEF4444) : const Color(0xFF0B192C),
+                      status: tx.status,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransactionDetailScreen(transaction: tx),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
 
@@ -649,13 +634,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-  void _openTransactionDetail(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const TransactionDetailScreen()),
-    );
-  }
 }
 
 // Quick Action Square Widget
@@ -716,6 +694,7 @@ class _TransactionTile extends StatelessWidget {
   final String subtitle;
   final String amount;
   final Color amountColor;
+  final TransactionStatus status;
   final VoidCallback? onTap;
 
   const _TransactionTile({
@@ -726,6 +705,7 @@ class _TransactionTile extends StatelessWidget {
     required this.subtitle,
     required this.amount,
     required this.amountColor,
+    this.status = TransactionStatus.successful,
     this.onTap,
   });
 
@@ -786,9 +766,13 @@ class _TransactionTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              const Text(
-                'Successful',
-                style: TextStyle(
+              Text(
+                status == TransactionStatus.successful
+                    ? 'Successful'
+                    : status == TransactionStatus.failed
+                        ? 'Failed'
+                        : 'Pending',
+                style: const TextStyle(
                   fontSize: 10,
                   color: Color(0xFF8A94A6),
                 ),

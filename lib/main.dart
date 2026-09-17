@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app/dependencies.dart';
 import 'providers/auth_provider.dart';
+import 'providers/account_provider.dart';
 import 'nav/login_screen.dart';
 import 'nav/screen3.dart';
 import 'nav/screen1.dart';
@@ -15,6 +16,9 @@ void main() {
       providers: [
         ChangeNotifierProvider(
           create: (_) => AuthProvider(deps.authRepository)..bootstrap(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AccountProvider(),
         ),
       ],
       child: const MyApp(),

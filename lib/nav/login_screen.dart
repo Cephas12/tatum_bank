@@ -54,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('remembered_email');
     }
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/home');
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 
   Future<void> _handleBiometricLogin() async {
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token != null) {
           await auth.bootstrap();
           if (!mounted || !auth.isLoggedIn) return;
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please log in with password once to enable biometrics.')),

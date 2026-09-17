@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/account_provider.dart';
 
 class AccountInformationScreen extends StatefulWidget {
   const AccountInformationScreen({super.key});
@@ -17,6 +18,7 @@ class _AccountInformationScreenState extends State<AccountInformationScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final account = context.watch<AccountProvider>();
     final user = auth.user;
 
     return Scaffold(
@@ -133,7 +135,7 @@ class _AccountInformationScreenState extends State<AccountInformationScreen> {
                               children: [
                                 Text(
                                   _isBalanceVisible
-                                      ? '₦165,700.00'
+                                      ? '₦${account.balance.toStringAsFixed(2).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}'
                                       : '₦ ••••••••',
                                   style: const TextStyle(
                                     fontSize: 16,

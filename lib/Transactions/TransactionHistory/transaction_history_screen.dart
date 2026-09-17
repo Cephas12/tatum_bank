@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/account_provider.dart';
 import 'transaction_detail_screen.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
@@ -13,71 +15,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   int _selectedTabIndex = 0;
   final List<String> _tabs = ['All', 'Pending', 'Successful', 'Failed'];
 
-  final List<Map<String, dynamic>> _transactions = [
-    {
-      'title': 'Buy Airtime – MTN',
-      'status': 'Successful',
-      'amount': '- ₦2,000.00',
-      'time': '10:45 AM',
-      'isCredit': false,
-      'icon': Icons.wallet,
-      'bgColor': const Color(0xFFFEF3C7),
-      'iconColor': const Color(0xFFD97706),
-    },
-    {
-      'title': 'Share Airtime – Glo',
-      'status': 'Successful',
-      'amount': '- ₦500.00',
-      'time': '09:12 AM',
-      'isCredit': false,
-      'icon': Icons.send_rounded,
-      'bgColor': const Color(0xFFD1FAE5),
-      'iconColor': const Color(0xFF10B981),
-    },
-    {
-      'title': 'Airtime Received - Airtel',
-      'status': 'Successful',
-      'amount': '+ ₦1,000.00',
-      'time': '08:06 AM',
-      'isCredit': true,
-      'icon': Icons.lightbulb_rounded,
-      'bgColor': const Color(0xFFFEE2E2),
-      'iconColor': const Color(0xFFEF4444),
-    },
-    {
-      'title': 'Buy Airtime - 9mobile',
-      'status': 'Successful',
-      'amount': '- ₦3,000.00',
-      'time': '07:20 AM',
-      'isCredit': false,
-      'icon': Icons.smartphone_rounded,
-      'bgColor': const Color(0xFFECFDF5),
-      'iconColor': const Color(0xFF059669),
-    },
-    {
-      'title': 'Data Top-up – MTN',
-      'status': 'Successful',
-      'amount': '- ₦5,000.00',
-      'time': '06:45 AM',
-      'isCredit': false,
-      'icon': Icons.arrow_downward_rounded,
-      'bgColor': const Color(0xFFFEF3C7),
-      'iconColor': const Color(0xFFD97706),
-    },
-    {
-      'title': 'Airtime Refund',
-      'status': 'Successful',
-      'amount': '+ ₦200.00',
-      'time': '05:15 AM',
-      'isCredit': true,
-      'icon': Icons.water_drop_rounded,
-      'bgColor': const Color(0xFFF1F5F9),
-      'iconColor': const Color(0xFF94A3B8),
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final account = context.watch<AccountProvider>();
     final double topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
@@ -203,9 +143,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              '₦165,700.00',
-                              style: TextStyle(
+                            Text(
+                              '₦${account.balance.toStringAsFixed(2).replaceAllMapped(RegExp(r"(\d{1,3})(?=(\d{3})+(?!\d))"), (Match m) => "${m[1]},")}',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
@@ -321,88 +261,116 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   const SizedBox(height: 12),
 
                   // Transactions List
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _transactions.length,
-                    separatorBuilder: (context, index) =>
-                    const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                    itemBuilder: (context, index) {
-                      final item = _transactions[index];
-                      return InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const TransactionDetailScreen(),
-                            ),
-                          );
-                        },
-                        child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: item['bgColor'] as Color,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              item['icon'] as IconData,
-                              color: item['iconColor'] as Color,
-                              size: 20,
+                  Builder(
+                    builder: (context) {
+                      final filteredTransactions = account.transactions.where((tx) {
+                        if (_selectedTabIndex == 0) return true; // All
+                        if (_selectedTabIndex == 1) return tx.status == TransactionStatus.pending;
+                        if (_selectedTabIndex == 2) return tx.status == TransactionStatus.successful;
+                        if (_selectedTabIndex == 3) return tx.status == TransactionStatus.failed;
+                        return true;
+                      }).toList();
+
+                      if (filteredTransactions.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: Text(
+                              'No transactions found for this filter.',
+                              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        );
+                      }
+
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredTransactions.length,
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                        itemBuilder: (context, index) {
+                          final item = filteredTransactions[index];
+                          return InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      TransactionDetailScreen(transaction: item),
+                                ),
+                              );
+                            },
+                            child: Row(
                               children: [
-                                Text(
-                                  item['title'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0B192C),
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: item.bgColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    item.icon,
+                                    color: item.iconColor,
+                                    size: 20,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  item['status'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF94A3B8),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.title,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0B192C),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.status == TransactionStatus.successful
+                                            ? 'Successful'
+                                            : item.status == TransactionStatus.failed
+                                                ? 'Failed'
+                                                : 'Pending',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF94A3B8),
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      item.amount,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: item.isCredit
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFF0B192C),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.subtitle.split(' • ').last,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                item['amount'] as String,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: (item['isCredit'] as bool)
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFF0B192C),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item['time'] as String,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
