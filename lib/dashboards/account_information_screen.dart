@@ -99,7 +99,7 @@ class _AccountInformationScreenState extends State<AccountInformationScreen> {
                             ),
                             const SizedBox(height: 4),
                             Row(
-                              children: const [
+                              children: [
                                 Text(
                                   account.accountNumber,
                                   style: const TextStyle(

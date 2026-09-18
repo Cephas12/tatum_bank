@@ -8,6 +8,7 @@ class TransactionStatusScreen extends StatelessWidget {
   final String plan;
   final String recipient;
   final String? transactionId;
+  final String? error;
   final VoidCallback? onPrimaryAction; // "Done" or "Try Again"
   final VoidCallback? onSecondaryAction; // "Share Receipt" or "Back to Home"
 
@@ -20,6 +21,7 @@ class TransactionStatusScreen extends StatelessWidget {
     required this.recipient,
     this.networkColorHex = '0xFFFFC727',
     this.transactionId,
+    this.error,
     this.onPrimaryAction,
     this.onSecondaryAction,
   });
@@ -122,10 +124,10 @@ class TransactionStatusScreen extends StatelessWidget {
 
                   // Subtitle Label
                   if (!isSuccess) ...[
-                    const Text(
-                      "We couldn't process your request at this time.",
+                    Text(
+                      error ?? "We couldn't process your request at this time.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF64748B),
                       ),

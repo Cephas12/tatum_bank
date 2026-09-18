@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/account_provider.dart';
+import '../../domain/models/transaction.dart';
 import 'transaction_detail_screen.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {

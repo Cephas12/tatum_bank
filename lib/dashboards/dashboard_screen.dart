@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import '../domain/models/transaction.dart';
 import 'account_information_screen.dart';
 import '../Transactions/TransactionHistory/transaction_history_screen.dart';
 import '../Transactions/TransactionHistory/transaction_detail_screen.dart';
@@ -221,7 +222,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             const SizedBox(height: 2),
                             Row(
-                              children: const [
+                              children: [
                                 Text(
                                   account.accountNumber,
                                   style: const TextStyle(

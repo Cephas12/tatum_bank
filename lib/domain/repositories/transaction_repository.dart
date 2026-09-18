@@ -1,4 +1,4 @@
-import '../../providers/account_provider.dart';
+import '../models/transaction.dart';
 
 abstract interface class TransactionRepository {
   Future<List<Transaction>> getTransactions({

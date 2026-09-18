@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
+import '../domain/models/transaction.dart';
+import '../providers/auth_provider.dart';
 import 'transaction_status_screen.dart';
 
 class BuyAirtimeDataScreen extends StatefulWidget {
@@ -30,10 +32,30 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
   final TextEditingController _customAmountController = TextEditingController();
 
   final List<Map<String, String>> _networks = [
-    {'name': 'MTN', 'color': '0xFFFFC727', 'textColor': '0xFF000000'},
-    {'name': 'Airtel', 'color': '0xFFFF8A8A', 'textColor': '0xFFFFFFFF'},
-    {'name': 'Glo', 'color': '0xFF81D4FA', 'textColor': '0xFFFFFFFF'},
-    {'name': '9mobile', 'color': '0xFF66BB6A', 'textColor': '0xFFFFFFFF'},
+    {
+      'name': 'MTN',
+      'color': '0xFFFFC727',
+      'textColor': '0xFF000000',
+      'id': 'bdc69d32-2d1c-4e6f-a495-39d4eb8c41e3',
+    },
+    {
+      'name': 'Airtel',
+      'color': '0xFFFF8A8A',
+      'textColor': '0xFFFFFFFF',
+      'id': 'e8d36209-0d43-4b66-b4f1-039564c6292d',
+    },
+    {
+      'name': 'Glo',
+      'color': '0xFF81D4FA',
+      'textColor': '0xFFFFFFFF',
+      'id': '4b67e347-a98f-4e74-828f-76bb145710a3',
+    },
+    {
+      'name': '9mobile',
+      'color': '0xFF66BB6A',
+      'textColor': '0xFFFFFFFF',
+      'id': 'b209a618-8bb1-47fb-a0c3-298f2a00f0c5',
+    },
   ];
 
   // Raw numeric values matching preset strings
@@ -612,7 +634,7 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                     height: 52,
                     child: ElevatedButton(
                       onPressed: _isFormValid
-                          ? () {
+                          ? () async {
                               final data = {
                                 'network':
                                     _networks[_selectedNetworkIndex]['name'],
@@ -638,33 +660,47 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
 
                               if (hasSufficientBalance) {
                                 // Try real purchase if connected to API
-                                account.makePurchase(
-                                  token: auth.user.token,
-                                  productId: data['network']!, // Needs UUID mapping ideally
-                                  amount: requestedAmount,
-                                  fields: {'phone': data['phone']},
-                                  transaction: Transaction(
-                                    title: 'Buy ${data['service']} – ${data['network']}',
-                                    subtitle: 'Just now • Success',
-                                    amount: '- ₦${data['amount']}',
-                                    isCredit: false,
-                                    icon: data['service'] == 'Airtime'
-                                        ? Icons.smartphone_rounded
-                                        : Icons.wifi_tethering_rounded,
-                                    bgColor: const Color(0xFFECFDF5),
-                                    iconColor: const Color(0xFF059669),
-                                    type: '${data['service']} Purchase',
-                                    narration: '${data['network']} ${data['service']} for ${data['phone']}',
-                                    reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
-                                    recipient: data['phone'],
-                                    status: TransactionStatus.successful,
-                                  ),
-                                ).catchError((e) {
-                                  debugPrint('API Purchase failed: $e');
-                                });
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                                );
+
+                                try {
+                                  await account.makePurchase(
+                                    token: auth.user.token,
+                                    productId: _networks[_selectedNetworkIndex]['id']!,
+                                    amount: requestedAmount,
+                                    fields: {'phone': data['phone']},
+                                    transaction: Transaction(
+                                      title: 'Buy ${data['service']} – ${data['network']}',
+                                      subtitle: 'Just now • Success',
+                                      amount: '- ₦${data['amount']}',
+                                      isCredit: false,
+                                      icon: data['service'] == 'Airtime'
+                                          ? Icons.smartphone_rounded
+                                          : Icons.wifi_tethering_rounded,
+                                      bgColor: const Color(0xFFECFDF5),
+                                      iconColor: const Color(0xFF059669),
+                                      type: '${data['service']} Purchase',
+                                      narration: '${data['network']} ${data['service']} for ${data['phone']}',
+                                      reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
+                                      recipient: data['phone'],
+                                      status: TransactionStatus.successful,
+                                    ),
+                                  );
+                                  
+                                  if (!mounted) return;
+                                  Navigator.pop(context); // Remove loader
+                                  _showStatusScreen(context, true, data);
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  Navigator.pop(context); // Remove loader
+                                  _showStatusScreen(context, false, data, error: e.toString());
+                                }
                               } else {
                                 // Record failed transaction locally for insufficient balance
-                                account.addTransaction(
+                                await account.addTransaction(
                                   Transaction(
                                     title: 'Buy ${data['service']} – ${data['network']}',
                                     subtitle: 'Just now • Failed',
@@ -683,32 +719,9 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                                   ),
                                   requestedAmount,
                                 );
+                                if (!mounted) return;
+                                _showStatusScreen(context, false, data);
                               }
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => TransactionStatusScreen(
-                                    isSuccess: hasSufficientBalance,
-                                    amount: data['amount']!,
-                                    networkName: data['network']!,
-                                    plan: data['service']!,
-                                    recipient: data['phone']!,
-                                    onPrimaryAction: () => hasSufficientBalance
-                                        ? Navigator.pushNamedAndRemoveUntil(
-                                            context,
-                                            '/home',
-                                            (route) => false,
-                                          )
-                                        : Navigator.pop(context),
-                                    onSecondaryAction: () => Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      '/home',
-                                      (route) => false,
-                                    ),
-                                  ),
-                                ),
-                              );
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -768,6 +781,27 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showStatusScreen(BuildContext context, bool isSuccess, Map<String, dynamic> data, {String? error}) {
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TransactionStatusScreen(
+          isSuccess: isSuccess,
+          amount: data['amount']!,
+          networkName: data['network']!,
+          plan: data['service']!,
+          recipient: data['phone']!,
+          error: error,
+          onPrimaryAction: () => isSuccess
+              ? Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false)
+              : Navigator.pop(context),
+          onSecondaryAction: () => Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false),
+        ),
       ),
     );
   }

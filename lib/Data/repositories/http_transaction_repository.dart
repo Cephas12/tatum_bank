@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../domain/repositories/transaction_repository.dart';
-import '../../providers/account_provider.dart';
+import '../../domain/models/transaction.dart';
 import '../response_handler.dart';
 
 class HttpTransactionRepository implements TransactionRepository {
@@ -27,10 +27,10 @@ class HttpTransactionRepository implements TransactionRepository {
   }) {
     return safeCall(() async {
       final queryParams = {
-        if (accountId != null) 'AccountId': accountId,
+        'AccountId': accountId,
         if (pageNumber != null) 'PageNumber': pageNumber.toString(),
         if (pageSize != null) 'PageSize': pageSize.toString(),
-      };
+      }..removeWhere((key, value) => value == null);
       
       final uri = Uri.parse('$baseUrl/transactions').replace(queryParameters: queryParams);
       
@@ -81,6 +81,11 @@ class HttpTransactionRepository implements TransactionRepository {
           'fields': fields,
         }),
       );
+      
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint('Purchase API Failure: ${response.statusCode} - ${response.body}');
+      }
+
       handleResponse(response);
     });
   }

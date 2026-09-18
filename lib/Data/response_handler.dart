@@ -1,6 +1,7 @@
 import 'dart:async' as dart_async;
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../domain/exceptions.dart';
 
@@ -60,10 +61,11 @@ Map<String, String> _fieldErrors(dynamic body) {
 
 Future<T> safeCall<T>(Future<T> Function() call) async {
   try {
-    return await call().timeout(const Duration(seconds: 15));
-  } on SocketException {
-    throw const NetworkException();
+    return await call().timeout(const Duration(seconds: 45));
+  } on SocketException catch (e) {
+    debugPrint('SocketException: ${e.message}, host: ${e.address}');
+    throw const NetworkException('Connection failed. Please check your internet or if the server is reachable.');
   } on dart_async.TimeoutException {
-    throw const TimeoutException();
+    throw const TimeoutException('The server is taking too long to respond. Please try again.');
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../providers/account_provider.dart';
+import '../../domain/models/transaction.dart';
 
 class TransactionDetailScreen extends StatelessWidget {
   final Transaction transaction;
