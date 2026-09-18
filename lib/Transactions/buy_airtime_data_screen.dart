@@ -36,25 +36,29 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
       'name': 'MTN',
       'color': '0xFFFFC727',
       'textColor': '0xFF000000',
-      'id': 'bdc69d32-2d1c-4e6f-a495-39d4eb8c41e3',
+      'airtimeId': '1e631749-dd93-4baa-bd14-5b8c3f3322d1',
+      'dataId': '571a3b36-840d-4111-9ae1-15ea621da3b8',
     },
     {
       'name': 'Airtel',
       'color': '0xFFFF8A8A',
       'textColor': '0xFFFFFFFF',
-      'id': 'e8d36209-0d43-4b66-b4f1-039564c6292d',
+      'airtimeId': 'e1152df7-1b20-4b63-8aac-1f43bde5823b',
+      'dataId': 'd95dc8d2-db44-429b-bc17-f5f7950ae141',
     },
     {
       'name': 'Glo',
       'color': '0xFF81D4FA',
       'textColor': '0xFFFFFFFF',
-      'id': '4b67e347-a98f-4e74-828f-76bb145710a3',
+      'airtimeId': 'bd44dda8-33ab-46ae-8506-b5661ddc1751',
+      'dataId': '4e319fc2-1641-47a0-8dc7-028b3d34c851',
     },
     {
       'name': '9mobile',
       'color': '0xFF66BB6A',
       'textColor': '0xFFFFFFFF',
-      'id': 'b209a618-8bb1-47fb-a0c3-298f2a00f0c5',
+      'airtimeId': '9fb83694-349e-4c61-9972-7c0b1aeb5304',
+      'dataId': '157bcfbb-8e54-4b89-a2a2-eae2722f5362',
     },
   ];
 
@@ -667,11 +671,16 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                                 );
 
                                 try {
+                                  final isAirtime = _selectedServiceIndex == 0;
+                                  final productId = isAirtime 
+                                      ? _networks[_selectedNetworkIndex]['airtimeId']!
+                                      : _networks[_selectedNetworkIndex]['dataId']!;
+
                                   await account.makePurchase(
                                     token: auth.user.token,
-                                    productId: _networks[_selectedNetworkIndex]['id']!,
+                                    productId: productId,
                                     amount: requestedAmount,
-                                    fields: {'phone': data['phone']},
+                                    fields: {'phoneNumber': data['phone']},
                                     transaction: Transaction(
                                       title: 'Buy ${data['service']} – ${data['network']}',
                                       subtitle: 'Just now • Success',

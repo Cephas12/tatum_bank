@@ -21,7 +21,7 @@ class Account {
 
   factory Account.fromJson(Map<String, dynamic> json) {
     return Account(
-      id: json['id'] ?? '',
+      id: json['id'] ?? json['accountId'] ?? '',
       customerId: json['customerId'] ?? '',
       accountNumber: json['accountNumber'] ?? '7099887766',
       accountType: json['accountType'] ?? 'Savings Account',
