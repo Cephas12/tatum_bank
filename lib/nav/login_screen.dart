@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../providers/auth_provider.dart';
-import '../providers/account_provider.dart';
 import 'screen3.dart';
 import 'forgot_password_screen.dart';
 
@@ -55,11 +54,6 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('remembered_email');
     }
     if (!mounted) return;
-
-    // Refresh account data with the new token
-    await context.read<AccountProvider>().refresh(auth.user.token);
-
-    if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 
@@ -96,11 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token != null) {
           await auth.bootstrap();
           if (!mounted || !auth.isLoggedIn) return;
-          
-          // Refresh account data
-          await context.read<AccountProvider>().refresh(auth.user.token);
-
-          if (!mounted) return;
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

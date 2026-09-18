@@ -70,16 +70,20 @@ class HttpTransactionRepository implements TransactionRepository {
     required Map<String, dynamic> fields,
   }) {
     return safeCall(() async {
+      final requestBody = {
+        'accountId': accountId,
+        'productId': productId,
+        'productItemId': productItemId,
+        'amount': amount,
+        'fields': fields,
+      };
+      
+      debugPrint('Purchase Request Body: ${jsonEncode(requestBody)}');
+
       final response = await _client.post(
         Uri.parse('$baseUrl/transactions/purchase'),
         headers: _authHeaders(token),
-        body: jsonEncode({
-          'accountId': accountId,
-          'productId': productId,
-          'productItemId': productItemId,
-          'amount': amount,
-          'fields': fields,
-        }),
+        body: jsonEncode(requestBody),
       );
       
       if (response.statusCode != 200 && response.statusCode != 201) {

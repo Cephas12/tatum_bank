@@ -2,21 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/models/transaction.dart';
-import '../domain/repositories/account_repository.dart';
-import '../domain/repositories/transaction_repository.dart';
 
 class AccountProvider extends ChangeNotifier {
   static const String _balanceKey = 'account_balance';
   static const String _transactionsKey = 'account_transactions';
   static const double _initialBalance = 165700.00;
 
-  final AccountRepository _accountRepo;
-  final TransactionRepository _transactionRepo;
-
-  AccountProvider(this._accountRepo, this._transactionRepo);
-
   double _balance = _initialBalance;
-  String _accountId = '';
   String _accountNumber = '7099887766';
   List<Transaction> _transactions = [];
   bool _isInitialized = false;
@@ -26,42 +18,11 @@ class AccountProvider extends ChangeNotifier {
   String get accountNumber => _accountNumber;
   List<Transaction> get transactions => List.unmodifiable(_transactions);
 
-  /// Load cached data first, then refresh from API if token provided
-  Future<void> bootstrap([String? authToken]) async {
+  /// Load cached data from disk.
+  Future<void> bootstrap() async {
     await _loadFromPrefs();
-    if (authToken != null) {
-      await refresh(authToken);
-    }
     _isInitialized = true;
     notifyListeners();
-  }
-
-  Future<void> refresh(String authToken) async {
-    try {
-      // 1. Get Accounts
-      final accounts = await _accountRepo.getAccounts(authToken);
-      if (accounts.isNotEmpty) {
-        final mainAccount = accounts.first;
-        _balance = mainAccount.balance;
-        _accountId = mainAccount.id;
-        _accountNumber = mainAccount.accountNumber;
-      }
-
-      // 2. Get Transactions
-      final remoteTransactions = await _transactionRepo.getTransactions(
-        token: authToken,
-        accountId: _accountId.isNotEmpty ? _accountId : null,
-      );
-      
-      if (remoteTransactions.isNotEmpty) {
-        _transactions = remoteTransactions;
-      }
-
-      await _saveToPrefs();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error refreshing account data: $e');
-    }
   }
 
   Future<void> _loadFromPrefs() async {
@@ -75,11 +36,13 @@ class AccountProvider extends ChangeNotifier {
       if (transactionsJson != null) {
         final List<dynamic> decoded = jsonDecode(transactionsJson);
         _transactions = decoded.map((item) => Transaction.fromJson(item)).toList();
-      } else if (_transactions.isEmpty) {
+      } else {
         _transactions = _getDefaultTransactions();
       }
     } catch (e) {
       debugPrint('Error loading account data: $e');
+      _balance = _initialBalance;
+      _transactions = _getDefaultTransactions();
     }
   }
 
@@ -136,49 +99,6 @@ class AccountProvider extends ChangeNotifier {
       await prefs.setString(_transactionsKey, transactionsJson);
     } catch (e) {
       debugPrint('Error saving account data: $e');
-    }
-  }
-
-  Future<void> makePurchase({
-    required String token,
-    required String productId,
-    required double amount,
-    required Map<String, dynamic> fields,
-    required Transaction transaction,
-  }) async {
-    try {
-      // 1. Send to API
-      await _transactionRepo.purchaseProduct(
-        token: token,
-        accountId: _accountId,
-        productId: productId,
-        amount: amount,
-        fields: fields,
-      );
-
-      // 2. Add locally for immediate feedback
-      _transactions.insert(0, transaction);
-      _balance -= amount;
-      
-      await _saveToPrefs();
-      notifyListeners();
-    } catch (e) {
-      // Record failed transaction locally
-      final failedTx = Transaction(
-        title: transaction.title,
-        subtitle: 'Just now • Failed',
-        amount: transaction.amount,
-        isCredit: false,
-        icon: transaction.icon,
-        bgColor: const Color(0xFFFEE2E2),
-        iconColor: const Color(0xFFEF4444),
-        status: TransactionStatus.failed,
-        narration: 'Purchase Failed: $e',
-        reference: 'FAIL-${DateTime.now().millisecondsSinceEpoch}',
-      );
-      _transactions.insert(0, failedTx);
-      notifyListeners();
-      rethrow;
     }
   }
 

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
 import '../domain/models/transaction.dart';
-import '../providers/auth_provider.dart';
 import 'transaction_status_screen.dart';
 
 class BuyAirtimeDataScreen extends StatefulWidget {
@@ -654,59 +653,35 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                                 widget.onContinueTap!(data);
                                 return;
                               }
-                              final double requestedAmount =
-                                  double.tryParse(data['amount']!) ?? 0;
+                              final double amountValue = double.tryParse(data['amount']!) ?? 0;
                               final account = context.read<AccountProvider>();
-                              final auth = context.read<AuthProvider>();
                               
                               final bool hasSufficientBalance =
-                                  requestedAmount <= account.balance;
+                                  amountValue <= account.balance;
 
                               if (hasSufficientBalance) {
-                                // Try real purchase if connected to API
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                                // Process locally and instantly
+                                await account.addTransaction(
+                                  Transaction(
+                                    title: 'Buy ${data['service']} – ${data['network']}',
+                                    subtitle: 'Just now • Success',
+                                    amount: '- ₦${data['amount']}',
+                                    isCredit: false,
+                                    icon: data['service'] == 'Airtime'
+                                        ? Icons.smartphone_rounded
+                                        : Icons.wifi_tethering_rounded,
+                                    bgColor: const Color(0xFFECFDF5),
+                                    iconColor: const Color(0xFF059669),
+                                    type: '${data['service']} Purchase',
+                                    narration: '${data['network']} ${data['service']} for ${data['phone']}',
+                                    reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
+                                    recipient: data['phone'],
+                                    status: TransactionStatus.successful,
+                                  ),
+                                  amountValue,
                                 );
-
-                                try {
-                                  final isAirtime = _selectedServiceIndex == 0;
-                                  final productId = isAirtime 
-                                      ? _networks[_selectedNetworkIndex]['airtimeId']!
-                                      : _networks[_selectedNetworkIndex]['dataId']!;
-
-                                  await account.makePurchase(
-                                    token: auth.user.token,
-                                    productId: productId,
-                                    amount: requestedAmount,
-                                    fields: {'phoneNumber': data['phone']},
-                                    transaction: Transaction(
-                                      title: 'Buy ${data['service']} – ${data['network']}',
-                                      subtitle: 'Just now • Success',
-                                      amount: '- ₦${data['amount']}',
-                                      isCredit: false,
-                                      icon: data['service'] == 'Airtime'
-                                          ? Icons.smartphone_rounded
-                                          : Icons.wifi_tethering_rounded,
-                                      bgColor: const Color(0xFFECFDF5),
-                                      iconColor: const Color(0xFF059669),
-                                      type: '${data['service']} Purchase',
-                                      narration: '${data['network']} ${data['service']} for ${data['phone']}',
-                                      reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
-                                      recipient: data['phone'],
-                                      status: TransactionStatus.successful,
-                                    ),
-                                  );
-                                  
-                                  if (!mounted) return;
-                                  Navigator.pop(context); // Remove loader
-                                  _showStatusScreen(context, true, data);
-                                } catch (e) {
-                                  if (!mounted) return;
-                                  Navigator.pop(context); // Remove loader
-                                  _showStatusScreen(context, false, data, error: e.toString());
-                                }
+                                if (!mounted) return;
+                                _showStatusScreen(context, true, data);
                               } else {
                                 // Record failed transaction locally for insufficient balance
                                 await account.addTransaction(
@@ -726,7 +701,7 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                                     recipient: data['phone'],
                                     status: TransactionStatus.failed,
                                   ),
-                                  requestedAmount,
+                                  amountValue,
                                 );
                                 if (!mounted) return;
                                 _showStatusScreen(context, false, data);

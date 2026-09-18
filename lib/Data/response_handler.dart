@@ -15,9 +15,16 @@ dynamic handleResponse(http.Response response) {
     case 204:
       return null;
     case 400:
-      final msg = _message(body) ?? 'Invalid request.';
+      final msg = _message(body);
       final errors = _fieldErrors(body);
-      throw ValidationException(msg, errors: errors);
+      
+      // If there are specific field errors, include them in the message
+      String fullMsg = msg ?? 'Invalid request.';
+      if (errors.isNotEmpty) {
+        fullMsg += ': ' + errors.values.join(', ');
+      }
+      
+      throw ValidationException(fullMsg, errors: errors);
     case 401:
       throw UnauthorisedException(_message(body) ?? 'Session expired. Please log in.');
     case 403:
