@@ -101,8 +101,8 @@ class _AccountInformationScreenState extends State<AccountInformationScreen> {
                             Row(
                               children: const [
                                 Text(
-                                  '7099887766',
-                                  style: TextStyle(
+                                  account.accountNumber,
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,

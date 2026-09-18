@@ -223,8 +223,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Row(
                               children: const [
                                 Text(
-                                  '7099887766',
-                                  style: TextStyle(
+                                  account.accountNumber,
+                                  style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF0B192C),

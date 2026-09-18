@@ -54,6 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('remembered_email');
     }
     if (!mounted) return;
+
+    // Refresh account data with the new token
+    await context.read<AccountProvider>().refresh(auth.user.token);
+
+    if (!mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
   }
 
@@ -90,6 +95,11 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token != null) {
           await auth.bootstrap();
           if (!mounted || !auth.isLoggedIn) return;
+          
+          // Refresh account data
+          await context.read<AccountProvider>().refresh(auth.user.token);
+
+          if (!mounted) return;
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

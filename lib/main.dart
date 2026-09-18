@@ -18,7 +18,10 @@ void main() {
           create: (_) => AuthProvider(deps.authRepository)..bootstrap(),
         ),
         ChangeNotifierProvider(
-          create: (_) => AccountProvider(),
+          create: (_) => AccountProvider(
+            deps.accountRepository,
+            deps.transactionRepository,
+          )..bootstrap(),
         ),
       ],
       child: const MyApp(),
@@ -40,9 +43,17 @@ class MyApp extends StatelessWidget {
         '/home': (_) => const DashboardScreen(),
         '/profile': (_) => const AccountInformationScreen(),
       },
-      home: Consumer<AuthProvider>(
-        builder: (_, auth, _) =>
-            auth.isLoggedIn ? const DashboardScreen() : const Screen1(),
+      home: Consumer2<AuthProvider, AccountProvider>(
+        builder: (_, auth, account, _) {
+          if (auth.isLoggedIn) {
+            // If logged in but account not yet refreshed, do it once
+            if (!account.isInitialized) {
+              account.refresh(auth.user.token);
+            }
+            return const DashboardScreen();
+          }
+          return const Screen1();
+        },
       ),
     );
   }

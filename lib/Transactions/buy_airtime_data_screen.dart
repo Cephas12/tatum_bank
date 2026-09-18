@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
 import 'transaction_status_screen.dart';
@@ -58,15 +59,17 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
   }
 
   bool get _isFormValid {
-    final bool hasPhone = _phoneController.text.trim().isNotEmpty;
+    final String phone = _phoneController.text.trim();
+    // Enforce exactly 11 digits
+    final bool hasValidPhone = phone.length == 11 && RegExp(r'^\d+$').hasMatch(phone);
 
     if (_selectedServiceIndex == 0) {
-      // Airtime mode: requires phone AND custom amount field to be non-empty
+      // Airtime mode: requires valid phone AND custom amount field to be non-empty
       final bool hasAmount = _customAmountController.text.trim().isNotEmpty;
-      return hasPhone && hasAmount;
+      return hasValidPhone && hasAmount;
     } else {
-      // Data Bundle mode: requires phone AND selected data package
-      return hasPhone && _selectedDataBundleIndex != -1;
+      // Data Bundle mode: requires valid phone AND selected data package
+      return hasValidPhone && _selectedDataBundleIndex != -1;
     }
   }
 
@@ -382,23 +385,30 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                           child: TextField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(11),
+                            ],
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF0B192C),
                             ),
-                            decoration: const InputDecoration(
-                              hintText: 'Enter phone number',
-                              hintStyle: TextStyle(
+                            decoration: InputDecoration(
+                              hintText: 'Enter phone number (11 digits)',
+                              hintStyle: const TextStyle(
                                 color: Color(0xFF94A3B8),
                                 fontSize: 13,
                                 fontWeight: FontWeight.normal,
                               ),
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
+                              contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 14,
                               ),
+                              suffixIcon: _phoneController.text.isNotEmpty && _phoneController.text.length < 11
+                                  ? const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20)
+                                  : null,
                             ),
                           ),
                         ),
@@ -621,37 +631,59 @@ class _BuyAirtimeDataScreenState extends State<BuyAirtimeDataScreen> {
                               final double requestedAmount =
                                   double.tryParse(data['amount']!) ?? 0;
                               final account = context.read<AccountProvider>();
+                              final auth = context.read<AuthProvider>();
+                              
                               final bool hasSufficientBalance =
                                   requestedAmount <= account.balance;
 
-                              // Add transaction regardless of success
-                              account.addTransaction(
-                                Transaction(
-                                  title: 'Buy ${data['service']} – ${data['network']}',
-                                  subtitle: 'Just now • ${hasSufficientBalance ? 'Success' : 'Failed'}',
-                                  amount: '- ₦${data['amount']}',
-                                  isCredit: false,
-                                  icon: data['service'] == 'Airtime'
-                                      ? Icons.smartphone_rounded
-                                      : Icons.wifi_tethering_rounded,
-                                  bgColor: hasSufficientBalance
-                                      ? const Color(0xFFECFDF5)
-                                      : const Color(0xFFFEE2E2),
-                                  iconColor: hasSufficientBalance
-                                      ? const Color(0xFF059669)
-                                      : const Color(0xFFEF4444),
-                                  type: '${data['service']} Purchase',
-                                  narration: hasSufficientBalance
-                                      ? '${data['network']} ${data['service']} for ${data['phone']}'
-                                      : 'Insufficient Balance',
-                                  reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
-                                  recipient: data['phone'],
-                                  status: hasSufficientBalance
-                                      ? TransactionStatus.successful
-                                      : TransactionStatus.failed,
-                                ),
-                                requestedAmount,
-                              );
+                              if (hasSufficientBalance) {
+                                // Try real purchase if connected to API
+                                account.makePurchase(
+                                  token: auth.user.token,
+                                  productId: data['network']!, // Needs UUID mapping ideally
+                                  amount: requestedAmount,
+                                  fields: {'phone': data['phone']},
+                                  transaction: Transaction(
+                                    title: 'Buy ${data['service']} – ${data['network']}',
+                                    subtitle: 'Just now • Success',
+                                    amount: '- ₦${data['amount']}',
+                                    isCredit: false,
+                                    icon: data['service'] == 'Airtime'
+                                        ? Icons.smartphone_rounded
+                                        : Icons.wifi_tethering_rounded,
+                                    bgColor: const Color(0xFFECFDF5),
+                                    iconColor: const Color(0xFF059669),
+                                    type: '${data['service']} Purchase',
+                                    narration: '${data['network']} ${data['service']} for ${data['phone']}',
+                                    reference: 'TRN-${DateTime.now().millisecondsSinceEpoch}',
+                                    recipient: data['phone'],
+                                    status: TransactionStatus.successful,
+                                  ),
+                                ).catchError((e) {
+                                  debugPrint('API Purchase failed: $e');
+                                });
+                              } else {
+                                // Record failed transaction locally for insufficient balance
+                                account.addTransaction(
+                                  Transaction(
+                                    title: 'Buy ${data['service']} – ${data['network']}',
+                                    subtitle: 'Just now • Failed',
+                                    amount: '- ₦${data['amount']}',
+                                    isCredit: false,
+                                    icon: data['service'] == 'Airtime'
+                                        ? Icons.smartphone_rounded
+                                        : Icons.wifi_tethering_rounded,
+                                    bgColor: const Color(0xFFFEE2E2),
+                                    iconColor: const Color(0xFFEF4444),
+                                    type: '${data['service']} Purchase',
+                                    narration: 'Insufficient Balance',
+                                    reference: 'FAIL-${DateTime.now().millisecondsSinceEpoch}',
+                                    recipient: data['phone'],
+                                    status: TransactionStatus.failed,
+                                  ),
+                                  requestedAmount,
+                                );
+                              }
 
                               Navigator.push(
                                 context,
